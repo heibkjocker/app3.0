@@ -2,10 +2,9 @@ import sys
 import pandas as pd
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QPainter
-from PySide6.QtWidgets import (QApplication, QFormLayout,
-                               QHBoxLayout, QLineEdit, QMainWindow,
-                               QPushButton, QTableWidget, QTableWidgetItem,
-                               QVBoxLayout, QWidget, QFileDialog)
+from PySide6.QtWidgets import (QApplication, QFormLayout, QHBoxLayout, QMainWindow, QPushButton,
+                               QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QFileDialog,
+                               QCalendarWidget, QListWidget, QAbstractItemView)
 from PySide6.QtCharts import QChartView, QPieSeries, QChart
 from PyQt6.QtCore import QStandardPaths
 
@@ -19,33 +18,45 @@ class Widget(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(len(self._data.columns))
         self.table.setRowCount(len(self._data.index))
+        self.columnas = ['pH salida', 'pH bocatoma', 'Cloro residual', 'Dosificacion de cloro',
+             'Bascula 1', 'Bascula 2', 'Detector de fugas', 'Turbiedad', 'Macro 1', 'Macro 2',
+             'Macro 3', 'Macro 4', 'Sensor de nivel']
         self.table.setHorizontalHeaderLabels(['Fecha', 'Hora', 'pH salida', 'pH bocatoma', 'Cloro residual', 'Dosificacion de cloro',
-                    'Bascula 1', 'Bascula 2', 'Detector de fugas', 'Turbiedad', 'Macro 1', 'Macro 2',
-                    'Macro 3', 'Macro 4', 'Sensor de nivel'])
-        #self.table.horizontalHeader().setSectionResizeMode(QHeaderView.style())
+             'Bascula 1', 'Bascula 2', 'Detector de fugas', 'Turbiedad', 'Macro 1', 'Macro 2',
+             'Macro 3', 'Macro 4', 'Sensor de nivel'])
+        # self.table.horizontalHeader().setSectionResizeMode(QHeaderView.style())
 
         # Chart
         self.chart_view = QChartView()
         self.chart_view.setRenderHint(QPainter.Antialiasing)
 
-        # Right
-        self.description = QLineEdit()
-        self.description.setClearButtonEnabled(True)
-        self.price = QLineEdit()
-        self.price.setClearButtonEnabled(True)
-
-        self.add = QPushButton("Add")
+        self.limpiar = QPushButton("Limpiar")
         self.clear = QPushButton("Clear")
         self.plot = QPushButton("Plot")
 
-        # Disabling 'Add' button
-        self.add.setEnabled(False)
+
+        #Calendar
+        self.calendar = QCalendarWidget()
+        self.calendar.setFixedSize(250, 250)
+        self.calendar.clicked.connect(self.check_calendar)
+
+        #List widget
+        self.list_vars = QListWidget()
+        self.list_vars.setFixedSize(250, 250)
+        self.list_vars.addItems(self.columnas)
+        self.list_vars.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+        self.list_vars.clicked.connect(self.lista_filtro)
+
 
         self.right = QVBoxLayout()
+        self.right_right = QHBoxLayout()
         self.form_layout = QFormLayout()
         self.form_layout.addWidget(self.table)
-        self.right.addLayout(self.form_layout)
-        self.right.addWidget(self.add)
+        #self.right.addLayout(self.form_layout)
+        self.right_right.addWidget(self.calendar)
+        self.right_right.addWidget(self.list_vars)
+        self.right.addLayout(self.right_right)
+        self.right.addWidget(self.limpiar)
         self.right.addWidget(self.plot)
         self.right.addWidget(self.chart_view)
         self.right.addWidget(self.clear)
@@ -56,14 +67,23 @@ class Widget(QWidget):
         self.layout.addLayout(self.right)
 
         # Signals and Slots
-        self.add.clicked.connect(self.add_element)
+        self.limpiar.clicked.connect(self.limpiar_filtros)
         self.plot.clicked.connect(self.plot_data)
-        self.clear.clicked.connect(self.clear_table)
-        self.description.textChanged.connect(self.check_disable)
-        self.price.textChanged.connect(self.check_disable)
+        #self.clear.clicked.connect(self.clear_table)
 
         # Fill example data
         self.fill_table()
+
+    @Slot()
+    def limpiar_filtros(self):
+        columnas = self.table.columnCount()
+        filas = self.table.rowCount()
+        for i in range(columnas):
+            self.table.showColumn(i)
+        for i in range(filas):
+            self.table.showRow(i)
+
+        self.list_vars.reset()
 
     @Slot()
     def add_element(self):
@@ -77,25 +97,38 @@ class Widget(QWidget):
         self.df = pd.read_csv(self.file)
         return self.df
 
+    @Slot()
+    def check_calendar(self):
+        fecha = self.calendar.selectedDate().getDate()
+        fecha = fecha[::-1]
+        fecha2 = []
+        for f in fecha:
+            lol = str(f)
+            if len(lol) > 1:
+                pass
+            else:
+                lol = '0' + lol
+            fecha2.append(lol)
+        fecha3 = fecha2[0] + '/' + fecha2[1] + '/' + fecha2[2]
+        num_row = self.table.rowCount()
+
+        for i in range(num_row):
+            fecha4 = self.table.item(i, 0).text()
+            if fecha4 == fecha3:
+                self.table.showRow(i)
+            else:
+                self.table.hideRow(i)
 
     @Slot()
-    def check_disable(self, s):
-        enabled = bool(self.description.text() and self.price.text())
-        self.add.setEnabled(enabled)
-
-    @Slot()
-    def plot_data(self):
-        # Get table information
-        series = QPieSeries()
-        for i in range(self.table.rowCount()):
-            text = self.table.item(i, 0).text()
-            number = self.table.item(i, 1).text()
-            series.append(text, number)
-
-        chart = QChart()
-        chart.addSeries(series)
-        chart.legend().setAlignment(Qt.AlignLeft)
-        self.chart_view.setChart(chart)
+    def lista_filtro(self):
+        indices = {'pH salida': 2, 'pH bocatoma': 3, 'Cloro residual': 4, 'Dosificacion de cloro': 5,
+                   'Bascula 1': 6, 'Bascula 2': 7, 'Detector de fugas': 8, 'Turbiedad': 9, 'Macro 1': 10, 'Macro 2': 11,
+                   'Macro 3': 12, 'Macro 4': 13, 'Sensor de nivel': 14}
+        ls_seleccionados = self.list_vars.selectedItems()
+        for indice in indices:
+            self.table.hideColumn(indices[indice])
+        for item in ls_seleccionados:
+            self.table.showColumn(indices[item.text()])
 
     def fill_table(self, data=None):
         data = self._data if not data else data
@@ -105,9 +138,17 @@ class Widget(QWidget):
                 self.table.setItem(i, j, QTableWidgetItem(str(item)))
 
     @Slot()
-    def clear_table(self):
-        self.table.setRowCount(0)
-        self.items = 0
+    def plot_data(self):
+        series = QPieSeries()
+        for i in range(self.table.rowCount()):
+            text = self.table.item(i, 1).text()
+            number = float(self.table.item(i, 2).text())
+            series.append(text, number)
+
+        chart = QChart()
+        chart.addSeries(series)
+        chart.legend().setAlignment(Qt.AlignLeft)
+        self.chart_view.setChart(chart)
 
 
 class MainWindow(QMainWindow):
@@ -133,7 +174,7 @@ if __name__ == "__main__":
     widget = Widget()
     # QMainWindow using QWidget as central widget
     window = MainWindow(widget)
-    window.resize(800, 600)
+    window.resize(1080, 840)
     window.show()
 
     # Execute application
