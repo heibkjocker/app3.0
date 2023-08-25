@@ -1,11 +1,12 @@
 import sys
 import pandas as pd
+import matplotlib.pyplot as plt
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (QApplication, QFormLayout, QHBoxLayout, QMainWindow, QPushButton,
                                QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QFileDialog,
                                QCalendarWidget, QListWidget, QAbstractItemView)
-from PySide6.QtCharts import QChartView, QPieSeries, QChart
+from PySide6.QtCharts import QChartView, QChart
 from PyQt6.QtCore import QStandardPaths
 
 
@@ -18,47 +19,48 @@ class Widget(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(len(self._data.columns))
         self.table.setRowCount(len(self._data.index))
+        self.table_stats = QTableWidget()
         self.columnas = ['pH salida', 'pH bocatoma', 'Cloro residual', 'Dosificacion de cloro',
-             'Bascula 1', 'Bascula 2', 'Detector de fugas', 'Turbiedad', 'Macro 1', 'Macro 2',
-             'Macro 3', 'Macro 4', 'Sensor de nivel']
-        self.table.setHorizontalHeaderLabels(['Fecha', 'Hora', 'pH salida', 'pH bocatoma', 'Cloro residual', 'Dosificacion de cloro',
+                         'Bascula 1', 'Bascula 2', 'Detector de fugas', 'Turbiedad', 'Macro 1', 'Macro 2',
+                         'Macro 3', 'Macro 4', 'Sensor de nivel']
+        self.table.setHorizontalHeaderLabels(
+            ['Fecha', 'Hora', 'pH salida', 'pH bocatoma', 'Cloro residual', 'Dosificacion de cloro',
              'Bascula 1', 'Bascula 2', 'Detector de fugas', 'Turbiedad', 'Macro 1', 'Macro 2',
              'Macro 3', 'Macro 4', 'Sensor de nivel'])
         # self.table.horizontalHeader().setSectionResizeMode(QHeaderView.style())
 
         # Chart
-        self.chart_view = QChartView()
-        self.chart_view.setRenderHint(QPainter.Antialiasing)
+        # self.chart_view = QChartView()
+        # self.chart_view.setRenderHint(QPainter.Antialiasing)
+        # self.chart = QChart()
 
         self.limpiar = QPushButton("Limpiar")
         self.clear = QPushButton("Clear")
         self.plot = QPushButton("Plot")
 
-
-        #Calendar
+        # Calendar
         self.calendar = QCalendarWidget()
         self.calendar.setFixedSize(250, 250)
         self.calendar.clicked.connect(self.check_calendar)
 
-        #List widget
+        # List widget
         self.list_vars = QListWidget()
         self.list_vars.setFixedSize(250, 250)
         self.list_vars.addItems(self.columnas)
         self.list_vars.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         self.list_vars.clicked.connect(self.lista_filtro)
 
-
         self.right = QVBoxLayout()
         self.right_right = QHBoxLayout()
         self.form_layout = QFormLayout()
         self.form_layout.addWidget(self.table)
-        #self.right.addLayout(self.form_layout)
+        # self.right.addLayout(self.form_layout)
         self.right_right.addWidget(self.calendar)
         self.right_right.addWidget(self.list_vars)
         self.right.addLayout(self.right_right)
         self.right.addWidget(self.limpiar)
         self.right.addWidget(self.plot)
-        self.right.addWidget(self.chart_view)
+        self.right.addWidget(self.table_stats)
         self.right.addWidget(self.clear)
 
         # QWidget Layout
@@ -69,7 +71,7 @@ class Widget(QWidget):
         # Signals and Slots
         self.limpiar.clicked.connect(self.limpiar_filtros)
         self.plot.clicked.connect(self.plot_data)
-        #self.clear.clicked.connect(self.clear_table)
+        # self.clear.clicked.connect(self.clear_table)
 
         # Fill example data
         self.fill_table()
@@ -95,6 +97,28 @@ class Widget(QWidget):
         self.file, _ = QFileDialog.getOpenFileName(self, "Open File", initial_dir, file_types)
 
         self.df = pd.read_csv(self.file)
+        self.df2 = self.df.set_index('Fecha')
+        self.filas = self.df['Fecha']
+        self.filas_sin_duplicados = list(self.filas.drop_duplicates())
+        self.diccionario = []
+        self.dicc = []
+        i = 0
+        for elemento in self.filas_sin_duplicados:
+            item = []
+            for fila in self.filas:
+                if fila == elemento:
+                    item.append(
+                        self.df.iloc[i])
+                    i = i + 1
+                self.diccionario.append(item)
+
+        for i in range(len(self.diccionario)):
+            for j in range(len(self.diccionario[i])):
+                self.dicc.append(dict(self.diccionario[i][j]))
+
+        serie = pd.Series(self.df.iloc[3])
+        print(serie)
+
         return self.df
 
     @Slot()
@@ -139,16 +163,41 @@ class Widget(QWidget):
 
     @Slot()
     def plot_data(self):
-        series = QPieSeries()
-        for i in range(self.table.rowCount()):
-            text = self.table.item(i, 1).text()
-            number = float(self.table.item(i, 2).text())
-            series.append(text, number)
+        columnas = self.table.columnCount()
+        filas = self.table.rowCount()
+        columnas_visibles = []
+        filas_visibles = []
 
-        chart = QChart()
-        chart.addSeries(series)
-        chart.legend().setAlignment(Qt.AlignLeft)
-        self.chart_view.setChart(chart)
+        for i in range(columnas):
+            if self.table.isColumnHidden(i):
+                pass
+            else:
+                columnas_visibles.append(i)
+        for i in range(filas):
+            if self.table.isRowHidden(i):
+                pass
+            else:
+                filas_visibles.append(i)
+        eje_x = self.df['Hora'][filas_visibles]
+        headers = self.df.columns
+        encabezados = []
+
+        for i in columnas_visibles:
+            encabezados.append(headers[i])
+        del encabezados[0]
+        del encabezados[0]
+
+        plt.figure(layout='constrained')
+        plt.style.use("Solarize_Light2")
+        for h in encabezados:
+            dato = self.df[h][filas_visibles]
+            plt.plot(eje_x, dato.tolist(), label=h)
+        plt.xlabel("Horas")
+        plt.ylabel("Magnitud")
+        plt.title("Grafica de variables")
+        plt.legend()
+        dato = []
+        plt.show()
 
 
 class MainWindow(QMainWindow):
