@@ -76,6 +76,19 @@ class Widget(QWidget):
         # Fill example data
         self.fill_table()
 
+    def modificar_fecha(self, fecha):
+        fecha = fecha[::-1]
+        fecha2 = []
+        for f in fecha:
+            lol = str(f)
+            if len(lol) > 1:
+                pass
+            else:
+                lol = '0' + lol
+            fecha2.append(lol)
+        fecha3 = fecha2[0] + '/' + fecha2[1] + '/' + fecha2[2]
+        return fecha3
+
     @Slot()
     def limpiar_filtros(self):
         columnas = self.table.columnCount()
@@ -97,43 +110,14 @@ class Widget(QWidget):
         self.file, _ = QFileDialog.getOpenFileName(self, "Open File", initial_dir, file_types)
 
         self.df = pd.read_csv(self.file)
-        self.df2 = self.df.set_index('Fecha')
-        self.filas = self.df['Fecha']
-        self.filas_sin_duplicados = list(self.filas.drop_duplicates())
-        self.diccionario = []
-        self.dicc = []
-        i = 0
-        for elemento in self.filas_sin_duplicados:
-            item = []
-            for fila in self.filas:
-                if fila == elemento:
-                    item.append(
-                        self.df.iloc[i])
-                    i = i + 1
-                self.diccionario.append(item)
 
-        for i in range(len(self.diccionario)):
-            for j in range(len(self.diccionario[i])):
-                self.dicc.append(dict(self.diccionario[i][j]))
-
-        serie = pd.Series(self.df.iloc[3])
-        print(serie)
-
+        self.promedio_diario = self.df[(self.df.Fecha == '20/08/2023')]
         return self.df
 
     @Slot()
     def check_calendar(self):
         fecha = self.calendar.selectedDate().getDate()
-        fecha = fecha[::-1]
-        fecha2 = []
-        for f in fecha:
-            lol = str(f)
-            if len(lol) > 1:
-                pass
-            else:
-                lol = '0' + lol
-            fecha2.append(lol)
-        fecha3 = fecha2[0] + '/' + fecha2[1] + '/' + fecha2[2]
+        fecha3 = self.modificar_fecha(fecha)
         num_row = self.table.rowCount()
 
         for i in range(num_row):
