@@ -14,7 +14,7 @@ class Widget(QWidget):
         super().__init__()
         self.items = 0
         self._data = self.add_element()
-        self._dataStats = self.add_stats()
+        self._dataStats = self.fecha_columna()
         # Left
         self.table = QTableWidget()
         self.table.setColumnCount(len(self._data.columns))
@@ -28,8 +28,9 @@ class Widget(QWidget):
              'Macro 3', 'Macro 4', 'Sensor de nivel'])
         # self.table.horizontalHeader().setSectionResizeMode(QHeaderView.style())
         self.table_stats = QTableWidget()
-        #self.table_stats.setColumnCount(len(self._dataStats.columns))
-        #self.table_stats.setRowCount(len(self._dataStats.index))
+        self.table_stats.setColumnCount(len(self.columnas))
+        self.table_stats.setHorizontalHeaderLabels(self.columnas)
+        self.table_stats.setRowCount(len(self._dataStats.index))
 
 
         # Chart
@@ -78,6 +79,7 @@ class Widget(QWidget):
 
         # Fill example data
         self.fill_table()
+        self.fill_table_stats()
 
     def modificar_fecha(self, fecha):
         fecha = fecha[::-1]
@@ -141,15 +143,10 @@ class Widget(QWidget):
         self.file, _ = QFileDialog.getOpenFileName(self, "Open File", initial_dir, file_types)
 
         self.df = pd.read_csv(self.file)
-        dias = 0
 
-        for mes_info in self.obtener_fechas():
-            dias = dias + mes_info['días_pasados']
-        print(dias)
         return self.df
 
-    def add_stats(self):
-        fechas = self.obtener_fechas()
+
 
 
 
@@ -184,6 +181,40 @@ class Widget(QWidget):
             for j in range(len(self._data.columns)):
                 item = self._data.iloc[i, j]
                 self.table.setItem(i, j, QTableWidgetItem(str(item)))
+
+    def fecha_columna(self):
+        data = self._data[['Fecha']].to_dict()
+        mes = []
+        for d in range(len(data['Fecha'])):
+            fecha = data['Fecha'][d]
+            partes = fecha.split("/")
+            del partes[0]
+            mes.append(partes[0] + "/" + partes[1])
+        copia = self._data
+        copia['mes'] = mes
+        self.mes_sinrepetir = set(mes)
+        return copia[copia['mes'] == '08/2023']
+
+    def fill_table_stats(self, data=None):
+        data = self.fecha_columna() if not data else data
+        data = pd.DataFrame(data)
+        data = data.drop(['Fecha', 'Hora'], axis=1)
+        columnas = list(data.columns)
+        col = columnas.pop()
+        num_filas = len(self.mes_sinrepetir)
+        self.table_stats.setHorizontalHeaderLabels(columnas)
+        self.table_stats.setRowCount(num_filas)
+        promedio = pd.DataFrame(data[data['mes'].isin(['08/2023'])])
+        #promedio.set_index('mes')
+        pro = promedio[columnas].mean()
+        n = 0
+        for i in range(0, num_filas):
+            for j in columnas:
+                self.table_stats.setItem(i, n, QTableWidgetItem(str(pro[j])))
+                n = n + 1
+
+
+
 
     @Slot()
     def plot_data(self):
