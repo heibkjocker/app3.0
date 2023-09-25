@@ -142,7 +142,7 @@ class Widget(QWidget):
         file_types = "Csv files (*.csv)"
         self.file, _ = QFileDialog.getOpenFileName(self, "Open File", initial_dir, file_types)
 
-        self.df = pd.read_csv(self.file)
+        self.df = pd.read_csv(self.file, delimiter=';')
 
         return self.df
 
@@ -250,6 +250,7 @@ class Widget(QWidget):
             plt.xlabel("Horas")
             plt.ylabel("Magnitud")
             plt.title("Gráfica de variables")
+            plt.xticks(eje_x, rotation=90, fontsize=6)
             plt.legend()
             plt.show()
         except Exception as e:
