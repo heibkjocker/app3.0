@@ -5,7 +5,7 @@ from PySide6.QtCore import Slot
 from datetime import datetime, timedelta
 from PySide6.QtWidgets import (QApplication, QFormLayout, QHBoxLayout, QMainWindow, QPushButton,
                                QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QFileDialog,
-                               QCalendarWidget, QListWidget, QAbstractItemView)
+                               QCalendarWidget, QListWidget, QAbstractItemView, QMessageBox)
 from PyQt6.QtCore import QStandardPaths
 
 
@@ -223,7 +223,7 @@ class Widget(QWidget):
         columnas_visibles = []
         filas_visibles = []
 
-        for i in range(columnas-1):
+        for i in range(columnas - 1):
             if self.table.isColumnHidden(i):
                 pass
             else:
@@ -233,6 +233,7 @@ class Widget(QWidget):
                 pass
             else:
                 filas_visibles.append(i)
+
         eje_x = self.df['Hora'][filas_visibles]
         headers = self.df.columns
         encabezados = []
@@ -242,17 +243,21 @@ class Widget(QWidget):
         del encabezados[0]
         del encabezados[0]
 
-        plt.figure(layout='constrained')
-        plt.style.use("Solarize_Light2")
-        for h in encabezados:
-            dato = self.df[h][filas_visibles]
-            plt.plot(eje_x, dato.tolist(), label=h)
-        plt.xlabel("Horas")
-        plt.ylabel("Magnitud")
-        plt.title("Grafica de variables")
-        plt.legend()
-        dato = []
-        plt.show()
+        try:
+            for h in encabezados:
+                dato = self.df[h][filas_visibles]
+                plt.plot(eje_x, dato.tolist(), label=h)
+            plt.xlabel("Horas")
+            plt.ylabel("Magnitud")
+            plt.title("Gráfica de variables")
+            plt.legend()
+            plt.show()
+        except Exception as e:
+            print(e)
+            QMessageBox.warning(self, "Error", "Seleccione al menos una variable para graficar.")
+
+        if len(encabezados) == 0:
+            QMessageBox.warning(self, "Error", "Seleccione al menos una variable para graficar.")
 
 
 class MainWindow(QMainWindow):
