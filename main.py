@@ -223,7 +223,7 @@ class Widget(QWidget):
         columnas_visibles = []
         filas_visibles = []
 
-        for i in range(columnas):
+        for i in range(columnas-1):
             if self.table.isColumnHidden(i):
                 pass
             else:
