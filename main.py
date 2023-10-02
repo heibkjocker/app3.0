@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 from PySide6.QtCore import Slot
-from datetime import datetime
+#from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QFormLayout, QHBoxLayout, QMainWindow, QPushButton,
                                QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QFileDialog,
                                QCalendarWidget, QListWidget, QAbstractItemView, QMessageBox)
@@ -83,7 +83,7 @@ class Widget(QWidget):
         self.fill_table_stats()
 
     def modificar_fecha(self, fecha):
-        return datetime.strftime(datetime(fecha[2], fecha[1], fecha[0]), '%d/%m/%Y')
+        return f"{str(fecha[2]).zfill(2)}/{str(fecha[1]).zfill(2)}/{str(fecha[0]).zfill(2)}"
 
     def obtener_fechas(self):
         # Obtener la fecha actual
