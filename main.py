@@ -20,13 +20,13 @@ class Widget(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(len(self._data.columns))
         self.table.setRowCount(len(self._data.index))
-        self.columnas = ['pH salida', 'pH bocatoma', 'Cloro residual', 'Dosificacion de cloro',
-                         'Bascula 1', 'Bascula 2', 'Detector de fugas', 'Turbiedad', 'Macro 1', 'Macro 2',
-                         'Macro 3', 'Macro 4', 'Sensor de nivel']
-        self.table.setHorizontalHeaderLabels(
-            ['Fecha', 'Hora', 'pH salida', 'pH bocatoma', 'Cloro residual', 'Dosificacion de cloro',
-             'Bascula 1', 'Bascula 2', 'Detector de fugas', 'Turbiedad', 'Macro 1', 'Macro 2',
-             'Macro 3', 'Macro 4', 'Sensor de nivel'])
+        self.columnas = ['pH bocatoma', 'pH salida', 'Macro 1', 'Macro 2', 'Q T -entrada',
+                         'Macro 3', 'Macro 4', 'Q T -salida', 'Sensor de nivel', 'V horario E',
+                         'V horario S', 'V regulacion', 'V real']
+        self.table.setHorizontalHeaderLabels(['Fecha', 'Hora', 'pH bocatoma', 'pH salida', 'Macro 1',
+                                              'Macro 2', 'Q T -entrada', 'Macro 3', 'Macro 4', 'Q T -salida',
+                                              'Sensor de nivel', 'V horario E', 'V horario S', 'V regulacion',
+                                              'V real'])
         # self.table.horizontalHeader().setSectionResizeMode(QHeaderView.style())
         self.table_stats = QTableWidget()
         self.table_stats.setColumnCount(len(self.columnas))
@@ -83,17 +83,7 @@ class Widget(QWidget):
         self.fill_table_stats()
 
     def modificar_fecha(self, fecha):
-        fecha = fecha[::-1]
-        fecha2 = []
-        for f in fecha:
-            lol = str(f)
-            if len(lol) > 1:
-                pass
-            else:
-                lol = '0' + lol
-            fecha2.append(lol)
-        fecha3 = fecha2[0] + '/' + fecha2[1] + '/' + fecha2[2]
-        return fecha3
+        return datetime.strftime(datetime(fecha[2], fecha[1], fecha[0]), '%d/%m/%Y')
 
     def obtener_fechas(self):
         # Obtener la fecha actual
@@ -169,9 +159,9 @@ class Widget(QWidget):
 
     @Slot()
     def lista_filtro(self):
-        indices = {'pH salida': 2, 'pH bocatoma': 3, 'Cloro residual': 4, 'Dosificacion de cloro': 5,
-                   'Bascula 1': 6, 'Bascula 2': 7, 'Detector de fugas': 8, 'Turbiedad': 9, 'Macro 1': 10, 'Macro 2': 11,
-                   'Macro 3': 12, 'Macro 4': 13, 'Sensor de nivel': 14}
+        indices = {'pH bocatoma': 2, 'pH salida': 3, 'Macro 1': 4, 'Macro 2': 5, 'Q T -entrada': 6,
+                         'Macro 3': 7, 'Macro 4': 8, 'Q T -salida': 9, 'Sensor de nivel': 10, 'V horario E': 11,
+                         'V horario S': 12, 'V regulacion': 13, 'V real': 14}
         ls_seleccionados = self.list_vars.selectedItems()
         for indice in indices:
             self.table.hideColumn(indices[indice])
