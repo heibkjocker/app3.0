@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 from PySide6.QtCore import Slot
-from datetime import datetime, timedelta
+from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QFormLayout, QHBoxLayout, QMainWindow, QPushButton,
                                QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QFileDialog,
                                QCalendarWidget, QListWidget, QAbstractItemView, QMessageBox)
@@ -87,31 +87,20 @@ class Widget(QWidget):
 
     def obtener_fechas(self):
         # Obtener la fecha actual
-        fecha_actual = datetime.now()
+        fecha_actual = pd.Timestamp.now()
 
         # Crear una lista para almacenar las listas de días pasados de los últimos 11 meses
         meses_dias_pasados = []
 
         # Calcular y agregar las listas de días pasados de los últimos 11 meses
-        for _ in range(11):
-            year = fecha_actual.year
-            month = fecha_actual.month
-
-            # Calcular el número de días pasados en el mes actual
-            dias_pasados = fecha_actual.day - 1
-
+        for mes in pd.date_range(fecha_actual - pd.DateOffset(months=11), fecha_actual, freq='M'):
             meses_dias_pasados.append({
-                'mes': fecha_actual.strftime('%B'),
-                'año': year,
-                'días_pasados': dias_pasados
+                'mes': mes.strftime('%B'),
+                'año': mes.year,
+                'días_pasados': (fecha_actual - mes).days
             })
 
-            # Retroceder al mes anterior
-            fecha_actual = fecha_actual.replace(day=1) - timedelta(days=1)
-
-
         return meses_dias_pasados
-
 
     @Slot()
     def limpiar_filtros(self):
@@ -138,10 +127,6 @@ class Widget(QWidget):
         self.df = pd.read_csv(self.file, delimiter=dialect.delimiter)
 
         return self.df
-
-
-
-
 
     @Slot()
     def check_calendar(self):
