@@ -124,9 +124,30 @@ class Widget(QWidget):
 
         with open(self.file, 'r') as f:
             dialect = csv.Sniffer().sniff(f.read())
-        self.df = pd.read_csv(self.file, delimiter=dialect.delimiter)
+        self.df = pd.read_csv(self.file, delimiter=dialect.delimiter, skiprows=1)
 
         return self.df
+
+    def procesar_csv(self):
+        # Leer el archivo CSV sin encabezados
+        df = self.add_element()
+
+        # Dividir la primera columna en dos columnas
+        df[[1, 2]] = df[df.columns[0]].str.split(' ', expand=True)
+
+        # Formatear la fecha y la hora
+        df[1] = df[1].apply(lambda x: self.modificar_fecha(tuple(map(int, x.split('/'))[::-1])))
+        df[2] = pd.to_datetime(df[2]).dt.strftime('%H:%M:%S')
+        # Añadir una nueva columna que es la suma de la columna 5 y la columna 6
+        df.insert(6, 'Nueva Columna1', df[df.columns[5]] + df[df.columns[6]])
+
+        # Añadir una nueva columna que es la suma de la columna 7 y la columna 8
+        df.insert(9, 'Nueva Columna2', df[df.columns[7]] + df[df.columns[8]])
+
+        # Asignar los encabezados correctos
+        df.columns = self.columnas
+
+        return df
 
     @Slot()
     def check_calendar(self):
