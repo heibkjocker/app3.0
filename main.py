@@ -1,3 +1,4 @@
+import csv
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -142,7 +143,9 @@ class Widget(QWidget):
         file_types = "Csv files (*.csv)"
         self.file, _ = QFileDialog.getOpenFileName(self, "Open File", initial_dir, file_types)
 
-        self.df = pd.read_csv(self.file, delimiter=';')
+        with open(self.file, 'r') as f:
+            dialect = csv.Sniffer().sniff(f.read())
+        self.df = pd.read_csv(self.file, delimiter=dialect.delimiter)
 
         return self.df
 
