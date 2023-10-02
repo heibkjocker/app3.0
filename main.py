@@ -140,7 +140,6 @@ class Widget(QWidget):
                 self.table.showRow(i)
             else:
                 self.table.hideRow(i)
-        print(fecha3)
 
     @Slot()
     def lista_filtro(self):
@@ -183,48 +182,27 @@ class Widget(QWidget):
         self.table_stats.setHorizontalHeaderLabels(columnas)
         self.table_stats.setRowCount(num_filas)
         promedio = pd.DataFrame(data[data['mes'].isin(['08/2023'])])
-        #promedio.set_index('mes')
-        pro = promedio[columnas].mean()
+        pro = promedio[columnas].describe()
         n = 0
         for i in range(0, num_filas):
             for j in columnas:
-                self.table_stats.setItem(i, n, QTableWidgetItem(str(pro[j])))
+                self.table_stats.setItem(i, n, QTableWidgetItem(str(pro.loc['mean', j])))
                 n = n + 1
-
-
 
 
     @Slot()
     def plot_data(self):
-        columnas = self.table.columnCount()
-        filas = self.table.rowCount()
-        columnas_visibles = []
-        filas_visibles = []
-
-        for i in range(columnas - 1):
-            if self.table.isColumnHidden(i):
-                pass
-            else:
-                columnas_visibles.append(i)
-        for i in range(filas):
-            if self.table.isRowHidden(i):
-                pass
-            else:
-                filas_visibles.append(i)
+        columnas_visibles = [i for i in range(self.table.columnCount() - 1) if not self.table.isColumnHidden(i)]
+        filas_visibles = [i for i in range(self.table.rowCount()) if not self.table.isRowHidden(i)]
 
         eje_x = self.df['Hora'][filas_visibles]
         headers = self.df.columns
-        encabezados = []
-
-        for i in columnas_visibles:
-            encabezados.append(headers[i])
-        del encabezados[0]
-        del encabezados[0]
+        encabezados = [headers[i] for i in columnas_visibles if i > 1]
 
         try:
             for h in encabezados:
                 dato = self.df[h][filas_visibles]
-                plt.plot(eje_x, dato.tolist(), label=h)
+                plt.plot(eje_x, dato.tolist(), label=h, marker="o", linestyle="None")
             plt.xlabel("Horas")
             plt.ylabel("Magnitud")
             plt.title("Gráfica de variables")
