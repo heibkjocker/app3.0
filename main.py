@@ -14,8 +14,7 @@ class Widget(QWidget):
     def __init__(self):
         super().__init__()
         self.items = 0
-        self._data = self.add_element()
-        self._dataStats = self.fecha_columna()
+        self._data = self.procesar_csv()
         # Left
         self.table = QTableWidget()
         self.table.setColumnCount(len(self._data.columns))
@@ -31,7 +30,7 @@ class Widget(QWidget):
         self.table_stats = QTableWidget()
         self.table_stats.setColumnCount(len(self.columnas))
         self.table_stats.setHorizontalHeaderLabels(self.columnas)
-        self.table_stats.setRowCount(len(self._dataStats.index))
+
 
 
         # Chart
@@ -80,7 +79,7 @@ class Widget(QWidget):
 
         # Fill example data
         self.fill_table()
-        self.fill_table_stats()
+
 
     def modificar_fecha(self, fecha):
         return f"{str(fecha[2]).zfill(2)}/{str(fecha[1]).zfill(2)}/{str(fecha[0]).zfill(2)}"
@@ -132,20 +131,59 @@ class Widget(QWidget):
         # Leer el archivo CSV sin encabezados
         df = self.add_element()
 
-        # Dividir la primera columna en dos columnas
-        df[[1, 2]] = df[df.columns[0]].str.split(' ', expand=True)
+        # Asigna los nombres de las columnas
+        df.columns = ['columna 1', 'pH bocatoma', 'pH salida', 'Macro 1', 'Macro 2', 'Macro 3', 'Macro 4', 'Sensor de nivel']
 
-        # Formatear la fecha y la hora
-        df[1] = df[1].apply(lambda x: self.modificar_fecha(tuple(map(int, x.split('/'))[::-1])))
-        df[2] = pd.to_datetime(df[2]).dt.strftime('%H:%M:%S')
-        # Añadir una nueva columna que es la suma de la columna 5 y la columna 6
-        df.insert(6, 'Nueva Columna1', df[df.columns[5]] + df[df.columns[6]])
+        # Ahora puedes dividir la primera columna (que ahora se llama 'columna1')
+        df[['fecha', 'hora']] = df['columna 1'].str.split(' ', expand=True)
 
-        # Añadir una nueva columna que es la suma de la columna 7 y la columna 8
-        df.insert(9, 'Nueva Columna2', df[df.columns[7]] + df[df.columns[8]])
+        # eliminar la columna original
+        df = df.drop(columns=['columna 1'])
 
-        # Asignar los encabezados correctos
-        df.columns = self.columnas
+        dfnuevo = df.iloc[:, :-2]
+        dfnuevo = dfnuevo.apply(pd.to_numeric)
+        dfnuevo = dfnuevo / 100
+
+        df[dfnuevo.columns] = dfnuevo
+
+        # Reordena las columnas para que 'fecha' y 'hora' sean las dos primeras
+        df = df[['fecha', 'hora'] + [c for c in df.columns if c not in ['fecha', 'hora']]]
+
+        # Convierte la fecha al formato deseado
+        df['fecha'] = pd.to_datetime(df['fecha']).dt.strftime('%d/%m/%Y')
+
+        # Asegúrate de que la hora esté en el formato correcto
+        df['hora'] = pd.to_datetime(df['hora'], format='%H:%M:%S').dt.time
+
+        df['Q T -entrada'] = df['Macro 1'] + df['Macro 2']
+        df['Q T -entrada'] = df['Q T -entrada'].round(2)
+        df['Q T -salida'] = df['Macro 3'] + df['Macro 4']
+        df['Q T -salida'] = df['Q T -salida'].round(2)
+        # Agrega una nueva columna que es la suma del dato actual y el dato anterior en 'Macro 1+2'
+        df['V horario E'] = df['Q T -entrada'] + df['Q T -entrada'].shift(1)
+        df['V horario E'] = df['V horario E'].fillna(df['Q T -entrada'] * 7200 / 1000)
+
+
+        # Agrega una nueva columna que es la suma del dato actual y el dato anterior en 'Macro 3+4'
+        df['V horario S'] = df['Q T -salida'] + df['Q T -salida'].shift(1)
+        df['V horario S'] = df['V horario S'].fillna(df['Q T -salida'] * 7200 / 1000)
+
+
+        # Multiplica todas las filas excepto la primera por 3,6 en 'Macro 1+2 acumulado'
+        df.loc[1:, 'V horario E'] *= 3.6
+        df['V horario E'] = df['V horario E'].round(2)
+
+        # Multiplica todas las filas excepto la primera por 3,6 en 'Macro 3+4 acumulado'
+        df.loc[1:, 'V horario S'] *= 3.6
+        df['V horario S'] = df['V horario S'].round(2)
+
+        # Crea una nueva columna que es la suma del dato de la fila anterior y la resta de 'Macro 1+2 acumulado' y 'Macro 3+4 acumulado'
+        df['V regulacion'] = df['V horario E'] - df['V horario S']
+        df['V real'] = df['V regulacion']
+        df['V regulacion'] = df['V regulacion'].shift(1) + df['V regulacion']
+        df['V regulacion'] = df['V regulacion'].round(2)
+        df['V real'] = df['V real'].shift(1) + df['V real']
+        df['V real'] = df['V real'].round(2)
 
         return df
 
@@ -180,35 +218,7 @@ class Widget(QWidget):
                 item = self._data.iloc[i, j]
                 self.table.setItem(i, j, QTableWidgetItem(str(item)))
 
-    def fecha_columna(self):
-        data = self._data[['Fecha']].to_dict()
-        mes = []
-        for d in range(len(data['Fecha'])):
-            fecha = data['Fecha'][d]
-            partes = fecha.split("/")
-            del partes[0]
-            mes.append(partes[0] + "/" + partes[1])
-        copia = self._data
-        copia['mes'] = mes
-        self.mes_sinrepetir = set(mes)
-        return copia[copia['mes'] == '08/2023']
 
-    def fill_table_stats(self, data=None):
-        data = self.fecha_columna() if not data else data
-        data = pd.DataFrame(data)
-        data = data.drop(['Fecha', 'Hora'], axis=1)
-        columnas = list(data.columns)
-        col = columnas.pop()
-        num_filas = len(self.mes_sinrepetir)
-        self.table_stats.setHorizontalHeaderLabels(columnas)
-        self.table_stats.setRowCount(num_filas)
-        promedio = pd.DataFrame(data[data['mes'].isin(['08/2023'])])
-        pro = promedio[columnas].describe()
-        n = 0
-        for i in range(0, num_filas):
-            for j in columnas:
-                self.table_stats.setItem(i, n, QTableWidgetItem(str(pro.loc['mean', j])))
-                n = n + 1
 
 
     @Slot()
