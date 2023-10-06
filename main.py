@@ -15,16 +15,16 @@ class Widget(QWidget):
         super().__init__()
         self.items = 0
         self._data = self.procesar_csv()
+        print(self._data.dtypes)
         # Left
         self.table = QTableWidget()
         self.table.setColumnCount(len(self._data.columns))
         self.table.setRowCount(len(self._data.index))
-        self.columnas = ['pH bocatoma', 'pH salida', 'Macro 1', 'Macro 2', 'Q T -entrada',
-                         'Macro 3', 'Macro 4', 'Q T -salida', 'Sensor de nivel', 'V horario E',
+        self.columnas = ['pH bocatoma', 'pH salida', 'Macro 1', 'Macro 2', 'Macro 3', 'Macro 4',
+                         'Sensor de nivel', 'Q T -entrada', 'Q T -salida', 'V horario E',
                          'V horario S', 'V regulacion', 'V real']
-        self.table.setHorizontalHeaderLabels(['Fecha', 'Hora', 'pH bocatoma', 'pH salida', 'Macro 1',
-                                              'Macro 2', 'Q T -entrada', 'Macro 3', 'Macro 4', 'Q T -salida',
-                                              'Sensor de nivel', 'V horario E', 'V horario S', 'V regulacion',
+        self.table.setHorizontalHeaderLabels(['Fecha', 'Hora', 'pH bocatoma', 'pH salida', 'Macro 1', 'Macro 2', 'Macro 3', 'Macro 4',
+                                              'Sensor de nivel', 'Q T -entrada', 'Q T -salida', 'V horario E', 'V horario S', 'V regulacion',
                                               'V real'])
         # self.table.horizontalHeader().setSectionResizeMode(QHeaderView.style())
         self.table_stats = QTableWidget()
@@ -135,7 +135,7 @@ class Widget(QWidget):
         df.columns = ['columna 1', 'pH bocatoma', 'pH salida', 'Macro 1', 'Macro 2', 'Macro 3', 'Macro 4', 'Sensor de nivel']
 
         # Ahora puedes dividir la primera columna (que ahora se llama 'columna1')
-        df[['fecha', 'hora']] = df['columna 1'].str.split(' ', expand=True)
+        df[['Fecha', 'Hora']] = df['columna 1'].str.split(' ', expand=True)
 
         # eliminar la columna original
         df = df.drop(columns=['columna 1'])
@@ -147,13 +147,15 @@ class Widget(QWidget):
         df[dfnuevo.columns] = dfnuevo
 
         # Reordena las columnas para que 'fecha' y 'hora' sean las dos primeras
-        df = df[['fecha', 'hora'] + [c for c in df.columns if c not in ['fecha', 'hora']]]
+        df = df[['Fecha', 'Hora'] + [c for c in df.columns if c not in ['Fecha', 'Hora']]]
 
         # Convierte la fecha al formato deseado
-        df['fecha'] = pd.to_datetime(df['fecha']).dt.strftime('%d/%m/%Y')
+        df['Fecha'] = pd.to_datetime(df['Fecha']).dt.strftime('%d/%m/%Y')
+        df['Fecha'] = df['Fecha'].astype(str)
 
         # Asegúrate de que la hora esté en el formato correcto
-        df['hora'] = pd.to_datetime(df['hora'], format='%H:%M:%S').dt.time
+        df['Hora'] = pd.to_datetime(df['Hora'], format='%H:%M:%S').dt.time
+        df['Hora'] = df['Hora'].astype(str)
 
         df['Q T -entrada'] = df['Macro 1'] + df['Macro 2']
         df['Q T -entrada'] = df['Q T -entrada'].round(2)
@@ -181,8 +183,10 @@ class Widget(QWidget):
         df['V regulacion'] = df['V horario E'] - df['V horario S']
         df['V real'] = df['V regulacion']
         df['V regulacion'] = df['V regulacion'].shift(1) + df['V regulacion']
+        df['V regulacion'] = df['V regulacion'].fillna(0)
         df['V regulacion'] = df['V regulacion'].round(2)
         df['V real'] = df['V real'].shift(1) + df['V real']
+        df['V real'] = df['V real'].fillna(0)
         df['V real'] = df['V real'].round(2)
 
         return df
@@ -202,9 +206,10 @@ class Widget(QWidget):
 
     @Slot()
     def lista_filtro(self):
-        indices = {'pH bocatoma': 2, 'pH salida': 3, 'Macro 1': 4, 'Macro 2': 5, 'Q T -entrada': 6,
-                         'Macro 3': 7, 'Macro 4': 8, 'Q T -salida': 9, 'Sensor de nivel': 10, 'V horario E': 11,
-                         'V horario S': 12, 'V regulacion': 13, 'V real': 14}
+        indices = {'pH bocatoma': 2, 'pH salida': 3, 'Macro 1': 4, 'Macro 2': 5, 'Macro 3': 6,
+                   'Macro 4': 7,  'Sensor de nivel': 8, 'Q T -entrada': 9,
+                    'Q T -salida': 10, 'V horario E': 11, 'V horario S': 12, 'V regulacion': 13,
+                    'V real': 14}
         ls_seleccionados = self.list_vars.selectedItems()
         for indice in indices:
             self.table.hideColumn(indices[indice])
@@ -223,16 +228,27 @@ class Widget(QWidget):
 
     @Slot()
     def plot_data(self):
-        columnas_visibles = [i for i in range(self.table.columnCount() - 1) if not self.table.isColumnHidden(i)]
+        # Obtén el nombre de todas las columnas
+        todas_las_columnas = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount())]
+
+        # Crea una lista con los índices de las columnas que no están ocultas y no son 'Hora'
+        columnas_visibles = [i for i in range(self.table.columnCount())
+                             if not self.table.isColumnHidden(i) and (
+                                         todas_las_columnas[i] != 'Hora' and todas_las_columnas[i] != 'Fecha')]
+
         filas_visibles = [i for i in range(self.table.rowCount()) if not self.table.isRowHidden(i)]
 
-        eje_x = self.df['Hora'][filas_visibles]
-        headers = self.df.columns
-        encabezados = [headers[i] for i in columnas_visibles if i > 1]
+        eje_x = self._data['Hora'][filas_visibles]
+        headers = self._data.columns
+        encabezados = [headers[i] for i in columnas_visibles]
+        plt.style.use("fivethirtyeight")
 
         try:
+            if not encabezados:
+                raise ValueError("Seleccione al menos una variable para graficar.")
+
             for h in encabezados:
-                dato = self.df[h][filas_visibles]
+                dato = self._data[h][filas_visibles]
                 plt.plot(eje_x, dato.tolist(), label=h, marker="o", linestyle="None")
             plt.xlabel("Horas")
             plt.ylabel("Magnitud")
@@ -242,10 +258,6 @@ class Widget(QWidget):
             plt.show()
         except Exception as e:
             print(e)
-            QMessageBox.warning(self, "Error", "Seleccione al menos una variable para graficar.")
-
-        if len(encabezados) == 0:
-            QMessageBox.warning(self, "Error", "Seleccione al menos una variable para graficar.")
 
 
 class MainWindow(QMainWindow):
